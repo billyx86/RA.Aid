@@ -16,7 +16,11 @@ from ra_aid.database.repositories.research_note_repository import ResearchNoteRe
 from ra_aid.database.repositories.related_files_repository import RelatedFilesRepositoryManager
 from ra_aid.database.repositories.trajectory_repository import TrajectoryRepositoryManager
 from ra_aid.database.repositories.work_log_repository import WorkLogRepositoryManager
-from ra_aid.database.repositories.config_repository import ConfigRepositoryManager, get_config_repository
+from ra_aid.database.repositories.config_repository import (
+    ConfigRepository,
+    ConfigRepositoryManager,
+    get_config_repository,
+)
 from ra_aid.env_inv_context import EnvInvManager
 from ra_aid.env_inv import EnvDiscovery
 from ra_aid.llm import initialize_llm, get_model_default_temperature
@@ -90,9 +94,6 @@ def run_agent_thread(
     logger.debug(f"Starting agent thread for session {session_id}")
     
     try:
-        # Initialize database connection
-        db = DatabaseManager()
-        
         env_discovery = EnvDiscovery()
         env_discovery.discover()
         env_data = env_discovery.format_markdown()
