@@ -594,7 +594,7 @@ git push origin feature/your-feature-name
 - Keep commits focused and message clear
 - Ensure all tests pass before submitting PR
 
-More information is available in our [Contributing Guide](https://docs.ra-aid.ai/contributing).
+More information is available in our [Contributing Guide](https://docs.ra-aid.ai/contributing), or see the in-repo [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, the dev loop, and the PR checklist.
 
 ## License
 
