@@ -27,11 +27,15 @@ dependencies = [
     "langchain-ollama>=0.3.0",
     "langchain-google-genai>=2.1.1",
     "langchain-fireworks>=0.2.8",
+    # The code imports `fireworks.client.error` directly, so declare the
+    # transitive dependency explicitly and cap it: fireworks-ai 1.x removed
+    # the `fireworks.client` shim (breaking `from fireworks.client.error import ...`).
+    "fireworks-ai>=0.15.12,<1.0",
     "langchain-groq>=0.3.1",
-    "langgraph>=0.3.20",
+    "langgraph>=0.3.20,<0.5",
     "langgraph-checkpoint>=2.0.23",
     "langchain-core>=0.3.48",
-    "langgraph-prebuilt>=0.1.7",
+    "langgraph-prebuilt>=0.1.7,<0.5",
     "langgraph-sdk>=0.1.59",
     "langchain>=0.3.21",
     "rich>=13.0.0",
