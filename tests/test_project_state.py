@@ -116,7 +116,10 @@ def test_file_as_directory(tmp_path):
         is_new_project(str(test_file))
 
 
-@pytest.mark.skipif(os.name == "nt", reason="Permission tests unreliable on Windows")
+@pytest.mark.skipif(
+    os.name == "nt" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+    reason="Permission tests unreliable on Windows or when running as root",
+)
 def test_permission_error(tmp_path):
     """Test handling of permission errors."""
     try:
