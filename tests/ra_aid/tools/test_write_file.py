@@ -245,6 +245,10 @@ def test_invalid_path_characters(temp_test_dir):
     assert "Invalid file path" in result["message"]
 
 
+@pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="Root bypasses file permission bits, so PermissionError is never raised",
+)
 def test_write_to_readonly_directory(temp_test_dir):
     """Test writing to a readonly directory."""
     readonly_dir = temp_test_dir / "readonly"

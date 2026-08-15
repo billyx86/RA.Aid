@@ -137,6 +137,10 @@ def test_io_error(mock_read_text, temp_test_dir):
     assert "Failed to read file" in result["message"]
 
 
+@pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="Root bypasses file permission bits, so PermissionError is never raised",
+)
 def test_permission_error(temp_test_dir):
     """Test handling of permission errors."""
     test_file = temp_test_dir / "readonly.txt"

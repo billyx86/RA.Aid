@@ -13,10 +13,20 @@ help:
 
 test:
 	# for future consideration append  --cov-fail-under=80 to fail test coverage if below 80%
-	python -m pytest --cov=ra_aid --cov-report=term-missing --cov-report=html
+	@if command -v uv >/dev/null 2>&1; then \
+		uv run python -m pytest --cov=ra_aid --cov-report=term-missing --cov-report=html; \
+	else \
+		python -m pytest --cov=ra_aid --cov-report=term-missing --cov-report=html; \
+	fi
 
 setup-dev:
-	pip install -e ".[dev]"
+	@if command -v uv >/dev/null 2>&1; then \
+		echo "Installing dependencies from uv.lock (deterministic, matches CI)"; \
+		uv sync --extra dev; \
+	else \
+		echo "WARNING: uv not found - falling back to pip, which ignores uv.lock and may resolve breaking versions"; \
+		pip install -e ".[dev]"; \
+	fi
 
 setup-hooks: setup-dev
 	pre-commit install
