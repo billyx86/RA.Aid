@@ -17,6 +17,7 @@ class MockArgs:
     research_model: Optional[str] = None
     planner_provider: Optional[str] = None
     planner_model: Optional[str] = None
+    research_only: bool = False
 
 
 @pytest.fixture
@@ -239,3 +240,40 @@ def test_mixed_provider_openai_compatible(clean_env, monkeypatch):
     assert "TAVILY_API_KEY environment variable is not set" in web_research_missing
     assert os.environ.get("EXPERT_OPENAI_API_KEY") == "openai-key"
     assert os.environ.get("EXPERT_OPENAI_API_BASE") == "http://test"
+
+
+@pytest.mark.parametrize(
+    "tavily_key,expected_enabled,expected_missing",
+    [
+        pytest.param(
+            None, False, ["TAVILY_API_KEY environment variable is not set"],
+            id="tavily_missing",
+        ),
+        pytest.param("test-key", True, [], id="tavily_set"),
+    ],
+)
+def test_research_only_validation(
+    clean_env, monkeypatch, tavily_key, expected_enabled, expected_missing
+):
+    """Research-only mode skips provider validation and only checks web research."""
+    args = MockArgs(
+        provider="openai", expert_provider="openai", model="gpt-4o", research_only=True
+    )
+    if tavily_key is not None:
+        monkeypatch.setenv("TAVILY_API_KEY", tavily_key)
+
+    expert_enabled, expert_missing, web_research_enabled, web_research_missing = (
+        validate_environment(args)
+    )
+    assert expert_enabled is False
+    assert expert_missing == []
+    assert web_research_enabled is expected_enabled
+    assert web_research_missing == expected_missing
+
+
+def test_research_only_requires_model_for_non_anthropic(clean_env):
+    """Non-Anthropic providers still require a model in research-only mode."""
+    args = MockArgs(provider="openai", expert_provider="openai", research_only=True)
+
+    with pytest.raises(SystemExit):
+        validate_environment(args)

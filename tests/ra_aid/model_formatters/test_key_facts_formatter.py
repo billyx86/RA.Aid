@@ -4,7 +4,7 @@ from ra_aid.model_formatters import format_key_fact, format_key_facts_dict
 
 
 class TestKeyFactsFormatter:
-    """Test cases for key facts formatting functions."""
+    """Test cases for the key facts formatting functions."""
 
     def test_format_key_fact(self):
         """Test formatting a single key fact."""
