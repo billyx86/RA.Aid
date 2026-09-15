@@ -70,10 +70,18 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
+    "ruff>=0.8.0",
+    "pre-commit>=3.7.0",
 ]
 
 [project.scripts]
 ra-aid = "ra_aid.__main__:main"
+
+[tool.pytest.ini_options]
+# Only collect the canonical test tree. Previously bare `pytest` also
+# collected stale duplicate trees left inside the package (ra_aid/tests/),
+# running the same tests twice.
+testpaths = ["tests"]
 
 [project.urls]
 Homepage = "https://github.com/ai-christianson/RA.Aid"
