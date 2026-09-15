@@ -207,6 +207,66 @@ class TestExitPropagation:
                 assert inner.agent_should_exit is True
                 assert outer.agent_should_exit is False
 
+    def test_mark_should_exit_propagation_depth(self):
+        """Test that mark_should_exit respects an explicit propagation depth."""
+        # Create a hierarchy of contexts: ctx1 (root) -> ctx2 -> ctx3
+        ctx1 = AgentContext()
+        ctx2 = AgentContext(parent_context=ctx1)
+        ctx3 = AgentContext(parent_context=ctx2)
+
+        # propagation_depth=0 marks only the current context
+        ctx3.mark_should_exit(propagation_depth=0)
+        assert ctx3.agent_should_exit is True
+        assert ctx2.agent_should_exit is False
+        assert ctx1.agent_should_exit is False
+
+        # Reset all contexts
+        ctx1.agent_should_exit = False
+        ctx2.agent_should_exit = False
+        ctx3.agent_should_exit = False
+
+        # propagation_depth=1 marks the current context and its immediate parent
+        ctx3.mark_should_exit(propagation_depth=1)
+        assert ctx3.agent_should_exit is True
+        assert ctx2.agent_should_exit is True
+        assert ctx1.agent_should_exit is False
+
+        # Reset all contexts
+        ctx1.agent_should_exit = False
+        ctx2.agent_should_exit = False
+        ctx3.agent_should_exit = False
+
+        # propagation_depth=2 marks the current context, parent, and grandparent
+        ctx3.mark_should_exit(propagation_depth=2)
+        assert ctx3.agent_should_exit is True
+        assert ctx2.agent_should_exit is True
+        assert ctx1.agent_should_exit is True
+
+    def test_mark_should_exit_helper_propagation_depth(self):
+        """Test that the mark_should_exit helper respects an explicit propagation depth."""
+        # Create a hierarchy of contexts
+        ctx1 = AgentContext()
+        ctx2 = AgentContext(parent_context=ctx1)
+
+        with agent_context(ctx2) as current_ctx:
+            # propagation_depth=0 marks only the current context
+            mark_should_exit(propagation_depth=0)
+            assert current_ctx.agent_should_exit is True
+            # The context manager creates a new child context, so ctx2 is not marked
+            assert ctx2.agent_should_exit is False
+            assert ctx1.agent_should_exit is False
+
+        # Reset for the next test
+        ctx1.agent_should_exit = False
+        ctx2.agent_should_exit = False
+
+        with agent_context(ctx2) as current_ctx:
+            # propagation_depth=1 marks the current context and its parent (ctx2)
+            mark_should_exit(propagation_depth=1)
+            assert current_ctx.agent_should_exit is True
+            assert ctx2.agent_should_exit is True
+            assert ctx1.agent_should_exit is False
+
 
 class TestCrashPropagation:
     """Test cases for the agent_has_crashed flag non-propagation."""
