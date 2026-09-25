@@ -1,7 +1,10 @@
 """Tests for the interactive subprocess module."""
 
 import os
+import sys
 import tempfile
+import threading
+import time
 
 import pytest
 
@@ -198,3 +201,54 @@ def test_tty_available():
         b"/dev/pts/" in output_cleaned or b"/dev/ttys" in output_cleaned
     ), f"Unexpected TTY output: {output_cleaned}"
     assert retcode == 0
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="signal-based; Unix only")
+def test_timeout_escalates_to_sigkill_for_sigterm_ignoring_process():
+    """A process that ignores SIGTERM must be SIGKILLed at 3x runtime.
+
+    Regression test: check_timeout() used to send SIGTERM at 2x and the
+    monitoring loop used to break immediately, making the 3x SIGKILL
+    escalation dead code. A SIGTERM-ignoring process therefore hung
+    proc.wait() indefinitely. The loop must keep monitoring until the
+    process is actually dead.
+
+    Expected timeline with expected_runtime_seconds=1:
+      t=2s  SIGTERM (ignored by the child)
+      t=3s  SIGKILL -> child dies -> pty closes -> loop exits
+    The call must therefore return well within the deadline below.
+    """
+    # A single process that ignores SIGTERM, so only SIGKILL can stop it.
+    # (A `trap '' TERM; sleep 60` shell would not work: SIGTERM would kill
+    # the sleep child and the ignoring shell would then exit on its own.)
+    script = (
+        "import signal, time; "
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        "time.sleep(60)"
+    )
+
+    result = {}
+
+    def runner():
+        try:
+            result["value"] = run_interactive_command(
+                [sys.executable, "-c", script], expected_runtime_seconds=1
+            )
+        except Exception as exc:  # noqa: BLE001 - report any failure
+            result["error"] = exc
+
+    thread = threading.Thread(target=runner, daemon=True)
+    start = time.time()
+    thread.start()
+    # SIGKILL fires at 3x; allow generous slack for scheduling.
+    thread.join(timeout=15)
+
+    elapsed = time.time() - start
+    assert not thread.is_alive(), (
+        "run_interactive_command hung: a SIGTERM-ignoring process was never "
+        f"escalated to SIGKILL (still running after {elapsed:.1f}s)"
+    )
+    assert "error" not in result, f"run_interactive_command raised: {result['error']}"
+    output, retcode = result["value"]
+    assert b"exceeded timeout" in output
+    assert retcode != 0

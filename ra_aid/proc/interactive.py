@@ -212,20 +212,32 @@ def run_interactive_command(
     captured_data = []
     start_time = time.time()
     was_terminated = False
+    # Track which signals have already been sent so each is only sent once.
+    signals_sent = {"sigterm": False, "sigkill": False}
 
     def check_timeout():
         elapsed = time.time() - start_time
         if elapsed > 3 * expected_runtime_seconds:
-            if sys.platform == "win32":
-                proc.kill()
-            else:
-                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            if not signals_sent["sigkill"]:
+                if sys.platform == "win32":
+                    proc.kill()
+                else:
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError, OSError):
+                        pass
+                signals_sent["sigkill"] = True
             return True
         elif elapsed > 2 * expected_runtime_seconds:
-            if sys.platform == "win32":
-                proc.terminate()
-            else:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            if not signals_sent["sigterm"]:
+                if sys.platform == "win32":
+                    proc.terminate()
+                else:
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                    except (ProcessLookupError, PermissionError, OSError):
+                        pass
+                signals_sent["sigterm"] = True
             return True
         return False
 
@@ -299,7 +311,12 @@ def run_interactive_command(
             while proc.poll() is None:
                 if check_timeout():
                     was_terminated = True
-                    break
+                    # Don't break just because a signal was sent: the
+                    # process may ignore SIGTERM. Keep monitoring so the
+                    # 3x escalation to SIGKILL can happen; only break
+                    # once the process has actually exited.
+                    if proc.poll() is not None:
+                        break
                 time.sleep(0.1)
         except KeyboardInterrupt:
             proc.terminate()
@@ -333,7 +350,9 @@ def run_interactive_command(
                 while True:
                     if check_timeout():
                         was_terminated = True
-                        break
+                        # Keep looping: the process may ignore SIGTERM, so
+                        # only exit once the pty reports EOF/EIO (after the
+                        # 3x escalation to SIGKILL has taken effect).
                     # Use a finite timeout to avoid indefinite blocking.
                     rlist, _, _ = select.select([master_fd, stdin_fd], [], [], 1.0)
                     if master_fd in rlist:
@@ -365,7 +384,9 @@ def run_interactive_command(
                 while True:
                     if check_timeout():
                         was_terminated = True
-                        break
+                        # Keep looping: the process may ignore SIGTERM, so
+                        # only exit once the pty reports EOF/EIO (after the
+                        # 3x escalation to SIGKILL has taken effect).
                     rlist, _, _ = select.select([master_fd], [], [], 1.0)
                     if not rlist:
                         continue
