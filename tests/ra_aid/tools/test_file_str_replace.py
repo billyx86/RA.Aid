@@ -100,6 +100,33 @@ def test_empty_strings(temp_test_dir):
     assert test_file.read_text() == "Hello !"
 
 
+def test_empty_old_str_with_replace_all_does_not_corrupt_file(temp_test_dir):
+    """An empty old_str with replace_all=True must not rewrite the file.
+
+    Regression test: content.count("") is len(content) + 1, so with
+    replace_all=True the old code ran content.replace("", new_str), which
+    inserts new_str between every character — silently corrupting the
+    file while reporting success.
+    """
+    test_file = temp_test_dir / "test.txt"
+    initial = "Hello world!"
+    test_file.write_text(initial)
+
+    result = file_str_replace.invoke(
+        {
+            "filepath": str(test_file),
+            "old_str": "",
+            "new_str": "-",
+            "replace_all": True,
+        }
+    )
+
+    assert result["success"] is False
+    assert "not be empty" in result["message"]
+    # The file must be completely untouched.
+    assert test_file.read_text() == initial
+
+
 def test_special_characters(temp_test_dir):
     """Test handling of special characters."""
     test_file = temp_test_dir / "test.txt"

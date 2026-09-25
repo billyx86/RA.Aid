@@ -86,6 +86,42 @@ def file_str_replace(filepath: str, old_str: str, new_str: str, *, replace_all: 
             return {"success": False, "message": msg}
 
         content = path.read_text()
+
+        if not old_str:
+            # content.count("") is len(content) + 1, and
+            # content.replace("", new_str) inserts new_str between every
+            # character — with replace_all=True that would silently
+            # corrupt the file while reporting success. Reject it.
+            msg = "old_str must not be empty (to insert at a position, include surrounding context)"
+
+            # Record error in trajectory
+            try:
+                trajectory_repo = get_trajectory_repository()
+                human_input_id = get_human_input_repository().get_most_recent_id()
+                trajectory_repo.create(
+                    step_data={
+                        "error_message": msg,
+                        "display_title": "Error",
+                    },
+                    record_type="error",
+                    human_input_id=human_input_id,
+                    is_error=True,
+                    error_message=msg,
+                    tool_name="file_str_replace",
+                    tool_parameters={
+                        "filepath": filepath,
+                        "old_str": old_str,
+                        "new_str": new_str,
+                        "replace_all": replace_all
+                    }
+                )
+            except Exception:
+                # Silently handle trajectory recording failures (e.g., in test environments)
+                pass
+
+            print_error(msg)
+            return {"success": False, "message": msg}
+
         count = content.count(old_str)
 
         if count == 0:
