@@ -12,7 +12,7 @@ from rich.text import Text
 from ra_aid.logging_config import get_logger
 from ra_aid.models_params import DEFAULT_BASE_LATENCY, models_params
 from ra_aid.proc.interactive import run_interactive_command
-from ra_aid.text.processing import truncate_output
+from ra_aid.text.processing import truncate_output, decode_output
 from ra_aid.tools.memory import log_work_event
 from ra_aid.database.repositories.config_repository import get_config_repository
 from ra_aid.database.repositories.related_files_repository import get_related_files_repository
@@ -140,7 +140,7 @@ def run_programming_task(
 
         # Return structured output
         return {
-            "output": (truncate_output(result[0].decode()) + extra_ins)
+            "output": (truncate_output(decode_output(result[0])) + extra_ins)
             if result[0]
             else "",
             "return_code": result[1],

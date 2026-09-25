@@ -9,7 +9,7 @@ from ra_aid.console.formatting import console_panel, cpm
 from ra_aid.database.repositories.human_input_repository import get_human_input_repository
 from ra_aid.database.repositories.trajectory_repository import get_trajectory_repository
 from ra_aid.proc.interactive import run_interactive_command
-from ra_aid.text.processing import truncate_output
+from ra_aid.text.processing import truncate_output, decode_output
 
 console = Console()
 
@@ -209,7 +209,7 @@ def ripgrep_search(
         print()
         output, return_code = run_interactive_command(cmd)
         print()
-        decoded_output = output.decode() if output else ""
+        decoded_output = decode_output(output)
 
         # Update trajectory with results
         trajectory_repo.create(

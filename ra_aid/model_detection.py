@@ -140,12 +140,23 @@ def should_use_react_agent(model: BaseChatModel) -> bool:
         logger.warning(f"Error checking function calling support: {e}.")
 
     try:
+        config_repo = get_config_repository()
         if not provider:
-            provider = get_config_repository().get("provider", "anthropic")
+            provider = config_repo.get("provider", "anthropic")
         provider_config = models_params.get(provider, {})
-        model_config = provider_config.get(
-            model_name, provider_config.get(model_name, {})
-        )
+
+        # When the chat model doesn't expose a usable name,
+        # get_model_name_from_chat_model falls back to DEFAULT_MODEL.
+        # In that case look up the model name from the config repository,
+        # which is the name the user actually configured (and the key
+        # models_params entries are defined under).
+        lookup_name = model_name
+        if lookup_name == DEFAULT_MODEL:
+            configured_model = config_repo.get("model")
+            if configured_model:
+                lookup_name = configured_model
+
+        model_config = provider_config.get(lookup_name, {})
 
         # If there's a specific backend configured, override the detection result
         if "default_backend" in model_config:

@@ -155,6 +155,55 @@ def test_should_use_react_agent_error_handling(mock_supports_function_calling):
     assert should_use_react_agent(model) is False
 
 
+@patch('litellm.supports_function_calling')
+@patch('ra_aid.model_detection.get_config_repository')
+@patch('ra_aid.model_detection.models_params')
+def test_should_use_react_agent_config_model_fallback_when_model_name_missing(
+    mock_models_params, mock_get_config_repo, mock_supports_function_calling
+):
+    """Test that the configured model's backend override is honored when the
+    chat model does not expose a name and litellm cannot identify the model.
+
+    Regression test: when the chat model has no name,
+    get_model_name_from_chat_model falls back to DEFAULT_MODEL, which is not a
+    key in models_params. The configured model name (from the config
+    repository) must be used for the backend lookup so the user's
+    'default_backend' override takes effect deterministically, instead of
+    relying on litellm's model map.
+    """
+    # A model that exposes no name -> get_model_name_from_chat_model
+    # returns DEFAULT_MODEL ("claude-3-7-sonnet-20250219").
+    model = MagicMock(spec=BaseChatModel)
+
+    mock_repo = MagicMock()
+    mock_repo.get.side_effect = lambda key, default=None: {
+        "provider": "anthropic",
+        "model": "claude-2",
+    }.get(key, default)
+    mock_get_config_repo.return_value = mock_repo
+
+    # Only the *configured* model name has a backend entry, not DEFAULT_MODEL.
+    mock_models_params.get.return_value = {
+        "claude-2": {
+            "default_backend": AgentBackendType.CREATE_REACT_AGENT
+        }
+    }
+
+    # Simulate litellm not being able to map the model (e.g. unknown/new
+    # model name), so function-calling detection cannot decide.
+    mock_supports_function_calling.side_effect = Exception("not mapped")
+
+    assert should_use_react_agent(model) is True
+
+    # And the same setup pointing at the CIAYN backend selects CIAYN.
+    mock_models_params.get.return_value = {
+        "claude-2": {
+            "default_backend": AgentBackendType.CIAYN
+        }
+    }
+    assert should_use_react_agent(model) is False
+
+
 def test_model_name_has_claude():
     """Test model_name_has_claude function."""
     # Test positive cases
