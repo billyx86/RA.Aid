@@ -113,3 +113,37 @@ def test_no_trailing_newline():
     assert "Line 9" in result
     assert "Line 0" not in result
     assert "Line 4" not in result
+
+
+def test_zero_max_lines():
+    """max_lines=0 must keep zero lines, not all of them.
+
+    Regression test: lines[-0:] is lines[0:] (the whole list), so the old
+    code kept every line AND prepended a bogus "[N lines of output
+    truncated]" message claiming they were removed.
+    """
+    input_lines = [f"Line {i}\n" for i in range(5)]
+    input_text = "".join(input_lines)
+
+    result = truncate_output(input_text, max_lines=0)
+
+    assert "[5 lines of output truncated]" in result
+    for line in input_lines:
+        assert line.strip() not in result
+
+
+def test_negative_max_lines():
+    """A negative max_lines is treated as 0 (keep no lines).
+
+    Regression test: with max_lines=-3 the old code computed
+    lines_removed = total + 3 and kept lines[3:], which is neither the
+    documented "most recent N lines" nor a sensible result.
+    """
+    input_lines = [f"Line {i}\n" for i in range(5)]
+    input_text = "".join(input_lines)
+
+    result = truncate_output(input_text, max_lines=-3)
+
+    assert "[5 lines of output truncated]" in result
+    for line in input_lines:
+        assert line.strip() not in result

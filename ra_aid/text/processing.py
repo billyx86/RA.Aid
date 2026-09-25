@@ -21,9 +21,14 @@ def truncate_output(output: str, max_lines: Optional[int] = 5000) -> str:
     if not output:
         return ""
 
-    # Set max_lines to default if None
+    # Set max_lines to default if None, and clamp negative values so the
+    # slicing below stays correct. (lines[-0:] is the whole list, so an
+    # unclamped 0 would keep every line yet still prepend a bogus
+    # "[N lines truncated]" message; negatives were just as broken.)
     if max_lines is None:
         max_lines = 5000
+    if max_lines < 0:
+        max_lines = 0
 
     # Split while preserving line endings
     lines = output.splitlines(keepends=True)
@@ -36,8 +41,8 @@ def truncate_output(output: str, max_lines: Optional[int] = 5000) -> str:
     # Calculate lines to remove
     lines_removed = total_lines - max_lines
 
-    # Keep only the most recent lines
-    truncated_lines = lines[-max_lines:]
+    # Keep only the most recent lines (none when max_lines == 0)
+    truncated_lines = lines[-max_lines:] if max_lines > 0 else []
 
     # Add truncation message at start
     truncation_msg = f"[{lines_removed} lines of output truncated]\n"
