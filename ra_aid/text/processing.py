@@ -4,6 +4,20 @@ from ra_aid.console.formatting import cpm
 import re
 
 
+def decode_output(output: bytes) -> str:
+    """Decode command output bytes, tolerating non-UTF-8 content.
+
+    Command output is not guaranteed to be valid UTF-8 (tools can emit
+    binary, latin-1 text, or arbitrary bytes). A bare output.decode()
+    raises UnicodeDecodeError, which turns a successful command into a
+    reported error. Undecodable bytes are replaced with the standard
+    U+FFFD replacement character so the caller still gets usable text.
+    """
+    if not output:
+        return ""
+    return output.decode("utf-8", errors="replace")
+
+
 def truncate_output(output: str, max_lines: Optional[int] = 5000) -> str:
     """Truncate output string to keep only the most recent lines if it exceeds max_lines.
 

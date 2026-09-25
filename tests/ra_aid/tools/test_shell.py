@@ -178,3 +178,24 @@ def test_shell_command_execution_error(mock_console, mock_prompt, mock_run_inter
     assert result["success"] is False
     assert result["return_code"] == 1
     assert "Command failed" in result["output"]
+
+
+def test_shell_command_non_utf8_output(
+    mock_console, mock_prompt, mock_run_interactive, mock_config_repository
+):
+    """Non-UTF-8 command output must not turn a success into an error.
+
+    Regression test: output.decode() raised UnicodeDecodeError on
+    non-UTF-8 bytes, so a successful command (return code 0) was reported
+    as a failure with the decode error as the output. Undecodable bytes
+    are now replaced with U+FFFD.
+    """
+    mock_config_repository.set("cowboy_mode", True)
+    mock_run_interactive.return_value = (b"caf\xe9 \xff\xfe raw", 0)
+
+    result = run_shell_command.invoke({"command": "echo raw bytes"})
+
+    assert result["success"] is True
+    assert result["return_code"] == 0
+    assert "caf" in result["output"]
+    assert "\ufffd" in result["output"]
